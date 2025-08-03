@@ -1,9 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
-import { readExpectedPhonesFromCSV } from '../utils/read-csv.ts';
-// import { readExpectedPhonesFromsCSV } from '../utils/csvReader.ts';
+import { readExpectedPhonesFromCSV } from '../utils/csvReader.ts';
 import { existsSync } from 'fs';
-
-
 
 
 test.describe("E2E Tests", () => {

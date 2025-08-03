@@ -1,5 +1,72 @@
-import { test, expect } from "@playwright/test";
-import { readExpectedPhonesFromCSV } from '../utils/read-csv.ts';
+import { test, expect, Page } from "@playwright/test";
+import { readExpectedPhonesFromCSV } from '../utils/csvReader.ts';
+import { existsSync } from 'fs';
+import path from 'path';
+
+// Define the path to your CSV file relative to the test file
+const CSV_FILE_PATH = path.resolve(__dirname, '..', 'expected-numbers.csv');
+
+// Global variable to store the expected phone numbers
+let expectedPhones: string[];
+
+// Load expected phone numbers once before any tests run
+test.beforeAll(() => {
+    if (!existsSync(CSV_FILE_PATH)) {
+        throw new Error(`CSV file not found at: ${CSV_FILE_PATH}. Please check the path.`);
+    }
+
+    expectedPhones = readExpectedPhonesFromCSV(CSV_FILE_PATH);
+    if (expectedPhones.length === 0) {
+        throw new Error(`Expected phone numbers list is empty. Please check the CSV file at ${CSV_FILE_PATH}.`);
+    }
+    console.log(`📁 Reading CSV from: ${CSV_FILE_PATH}`);
+    console.log(`Loaded ${expectedPhones.length} expected phone numbers from CSV.`);
+});
+
+/**
+ * Utility function to clean a string to extract only the phone number part.
+ * It removes any characters that are not a digit or a plus sign.
+ * @param phoneString The raw string containing the phone number.
+ * @returns The cleaned phone number string, or an empty string if no valid number is found.
+ */
+function cleanPhoneNumber(phoneString: string): string {
+    const plusIndex = phoneString.indexOf('+');
+    if (plusIndex === -1) {
+        return '';
+    }
+    let onlyPhone = phoneString.substring(plusIndex);
+    return onlyPhone.replace(/[^0-9+]/g, '');
+}
+
+/**
+ * Utility function to extract and clean phone numbers from a given page based on selectors.
+ * @param page The Playwright Page object.
+ * @param selectors An array of CSS selectors to find phone number elements.
+ * @returns A promise that resolves to an array of unique, cleaned phone numbers.
+ */
+async function extractPhoneNumbers(page: Page, selectors: string[]): Promise<string[]> {
+    const extractedNumbers: Set<string> = new Set();
+    for (const selector of selectors) {
+        try {
+            await page.waitForSelector(selector, { timeout: 5000, state: 'attached' });
+        } catch (e) {
+            console.warn(`Selector "${selector}" not found on the page, skipping extraction.`);
+            continue;
+        }
+
+        const elements = await page.$$(selector);
+        for (const el of elements) {
+            const text = await el.innerText();
+            if (text.includes('+')) {
+                const cleanedNumber = cleanPhoneNumber(text);
+                if (cleanedNumber) {
+                    extractedNumbers.add(cleanedNumber);
+                }
+            }
+        }
+    }
+    return Array.from(extractedNumbers);
+}
 
 test.describe("E2E Tests", () => {
     test("should load the homepage", async ({ page }) => {
@@ -23,15 +90,10 @@ test.describe("E2E Tests", () => {
             await expect(headerLocator).toBeVisible();
             await headerLocator.hover();
 
-            // Find the parent list item (li) of the header link
             const parentLi = headerLocator.locator('xpath=ancestor::li');
-            
-            // Now, find the specific sub-link within that parent li
             const subLink = parentLi.getByRole('link', { name: header.linkText, exact: true });
 
             await expect(subLink).toBeVisible();
-
-            // Use scrollIntoViewIfNeeded() to handle potential viewport issues
             await subLink.scrollIntoViewIfNeeded();
 
             await subLink.click();
@@ -49,50 +111,19 @@ test.describe("E2E Tests", () => {
         await expect(page).toHaveURL("/");
     });
 
-    test('should navigate contact page', async ({ page }) => {
+    // The clean, final version of the contact numbers test
+    test('should match contact numbers with CSV', async ({ page }) => {
         await page.goto("/");
         await page.getByRole('link', { name: 'Contact Us Contact Us' }).click();
         await expect(page).toHaveURL(/contact-us/);
 
-        const phoneSpans = page.locator('span.pra-medium.pra-medium-font');
-        await expect(phoneSpans.first()).toBeVisible();
-        const count = await phoneSpans.count();
-        console.log(`📞 Total contact numbers found: ${count}`);
+        const contactPageSelectors = ['span.pra-medium.pra-medium-font'];
+        const extractedPhones = await extractPhoneNumbers(page, contactPageSelectors);
 
-        for (let i = 0; i < count; i++) {
-            const number = await phoneSpans.nth(i).innerText();
-            if (number.includes('+')) {
-                console.log(`✅ Phone: ${number}`);
-            }
-        }
-        await page.goBack();
-        await expect(page).toHaveURL("/");
-    });
-
-    test('should match contact numbers with CSV (Refined)', async ({ page }) => {
-        await page.goto("/");
-        await page.getByRole('link', { name: 'Contact Us Contact Us' }).click();
-        await expect(page).toHaveURL(/contact-us/);
-
-        const phoneSpans = page.locator('span.pra-medium.pra-medium-font');
-        await expect(phoneSpans.first()).toBeVisible();
-        const count = await phoneSpans.count();
-        const extractedPhones: string[] = [];
-
-        for (let i = 0; i < count; i++) {
-            const text = await phoneSpans.nth(i).innerText();
-            if (text.includes('+')) {
-                const plusIndex = text.indexOf('+');
-                let onlyPhone = text.slice(plusIndex);
-                onlyPhone = onlyPhone.replace(/,$/, '').trim();
-                extractedPhones.push(onlyPhone);
-            }
-        }
-
-        const expectedPhones = readExpectedPhonesFromCSV();
         console.log(`📞 Extracted from site (${extractedPhones.length}):`, extractedPhones);
         console.log(`📁 Expected from CSV (${expectedPhones.length}):`, expectedPhones);
 
+        // This assertion will correctly fail if the number formats don't match
         expect(extractedPhones).toEqual(expect.arrayContaining(expectedPhones));
 
         await page.goBack();

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { readExpectedPhonesFromsCSV } from '../utils/csvReader';
+import { readExpectedPhonesFromCSV } from '../utils/csvReader';
 import { existsSync } from 'fs';
 
 const CSV_FILE_PATH = 'expected-numbers.csv';
@@ -10,7 +10,7 @@ test.beforeAll(() => {
     throw new Error(`CSV file not found at: ${CSV_FILE_PATH}. Please check the path.`);
   }
 
-  expectedPhones = readExpectedPhonesFromsCSV(CSV_FILE_PATH);
+  expectedPhones = readExpectedPhonesFromCSV(CSV_FILE_PATH);
   if (expectedPhones.length === 0) {
     throw new Error(`Expected phone numbers list is empty. Please check the CSV file at ${CSV_FILE_PATH}.`);
   }
