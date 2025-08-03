@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# dotenv files
+.env
+.env.local
+
+# IDE related
+.vscode/
+.idea/
+
+# Allure reports
+allure-results/
+allure-report/
+
+# Test output
+test-results/
+
+# OS related
+.DS_Store
+Thumbs.db
+# screenshots
+screenshots/
+# Coverage reports
+coverage/
