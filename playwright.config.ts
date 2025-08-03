@@ -27,7 +27,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'https://www.girikon.com/',
-    headless: false,
+    headless: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'on-first-retry'  
