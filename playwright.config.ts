@@ -14,7 +14,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 3 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   reporter: [
@@ -28,8 +28,11 @@ export default defineConfig({
     }],
   ],
   use: {
-    baseURL: 'https://girikon.com',
-    trace: 'on-first-retry',
+    baseURL: 'https://www.girikon.com/',
+    headless: false,
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    trace: 'on-first-retry'  
   },
 });
 
